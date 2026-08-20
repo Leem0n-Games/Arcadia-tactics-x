@@ -46,6 +46,8 @@ const App = () => {
   const activeEntity = battleEntities.find(e => e.id === activeEntityId);
   const isPlayerTurn = activeEntity?.type === 'PLAYER';
 
+  const selectedSpell = store.selectedSpell;
+
   // Determine active tactical action mode (with default fallbacks when selectedAction is null)
   const activeAction = useMemo(() => {
       if (gameState !== GameState.BATTLE_TACTICAL || !isPlayerTurn) return null;
@@ -106,7 +108,7 @@ const App = () => {
           }
       }
       return moves;
-  }, [gameState, activeAction, hasMoved, battleEntities, activeEntity, battleMap, battleHazards]);
+  }, [gameState, activeAction, hasMoved, battleEntities, activeEntity?.id, activeEntity?.position.x, activeEntity?.position.y, activeEntity?.stats.speed, battleMap, battleHazards]);
 
   // 2. Attack / Spell Perimeter Range Tiles (Red Hazard Overlay)
   const attackRangeTiles = useMemo(() => {
@@ -123,7 +125,7 @@ const App = () => {
               range = 1;
           }
       } else if (activeAction === BattleAction.MAGIC) {
-          range = store.selectedSpell?.range || 6;
+          range = selectedSpell?.range || 6;
       }
 
       const tiles: PositionComponent[] = [];
@@ -135,18 +137,20 @@ const App = () => {
           if (cell.isObstacle) obstacleMap.add(`${cell.x},${cell.z}`);
       });
 
+      const hasLos = useGameStore.getState().hasLineOfSight;
+
       for (let x = Math.max(0, px - range); x <= Math.min(BATTLE_MAP_SIZE - 1, px + range); x++) {
           for (let z = Math.max(0, py - range); z <= Math.min(BATTLE_MAP_SIZE - 1, py + range); z++) {
               if (x === px && z === py) continue;
               const dist = Math.max(Math.abs(px - x), Math.abs(py - z));
               if (dist <= range && !obstacleMap.has(`${x},${z}`)) {
-                  if (range > 1 && !store.hasLineOfSight({ x: px, y: py }, { x, y: z })) continue;
+                  if (range > 1 && !hasLos({ x: px, y: py }, { x, y: z })) continue;
                   tiles.push({ x, y: z });
               }
           }
       }
       return tiles;
-  }, [gameState, activeAction, hasActed, battleEntities, activeEntity, store, battleMap]);
+  }, [gameState, activeAction, hasActed, battleEntities, activeEntity?.id, activeEntity?.position.x, activeEntity?.position.y, activeEntity?.equipment, activeEntity?.stats.class, selectedSpell?.id, selectedSpell?.range, battleMap]);
 
   // 3. Valid Targets inside Attack Range
   const validTargets = useMemo(() => {
@@ -163,10 +167,11 @@ const App = () => {
               range = 1;
           }
       } else if (activeAction === BattleAction.MAGIC) {
-          range = store.selectedSpell?.range || 6;
+          range = selectedSpell?.range || 6;
       }
 
-      const isSpellHealOrBuff = store.selectedSpell && (store.selectedSpell.type === SpellType.HEAL || store.selectedSpell.type === SpellType.BUFF);
+      const isSpellHealOrBuff = selectedSpell && (selectedSpell.type === SpellType.HEAL || selectedSpell.type === SpellType.BUFF);
+      const hasLos = useGameStore.getState().hasLineOfSight;
 
       return battleEntities
         .filter(e => e.stats.hp > 0)
@@ -178,11 +183,11 @@ const App = () => {
         .filter(e => {
             const dist = Math.max(Math.abs(activeEntity.position.x - e.position.x), Math.abs(activeEntity.position.y - e.position.y));
             if (dist > range) return false;
-            return store.hasLineOfSight(activeEntity.position, e.position);
+            return hasLos(activeEntity.position, e.position);
         })
         .map(e => ({ x: e.position.x, y: e.position.y }));
 
-  }, [gameState, activeAction, hasActed, battleEntities, activeEntity, store]);
+  }, [gameState, activeAction, hasActed, battleEntities, activeEntity?.id, activeEntity?.position.x, activeEntity?.position.y, activeEntity?.equipment, activeEntity?.stats.class, selectedSpell?.id, selectedSpell?.range, selectedSpell?.type]);
 
   if (isAdmin) {
       return <AdminDashboard />;

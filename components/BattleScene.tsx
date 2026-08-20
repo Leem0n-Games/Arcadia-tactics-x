@@ -26,7 +26,19 @@ import { MobileGestureHUD } from './battle/MobileGestureHUD';
 import { useBattleJuice } from '../hooks/useBattleJuice';
 
 export const BattleScene: React.FC<any> = React.memo(({ entities, weather, currentTurnEntityId, onTileClick, validMoves, validTargets, attackRangeTiles }) => {
-    const { battleMap, battleHazards, voxelStructures, damagePopups, handleTileHover, dimension, hasActed, hasMoved, activeSpellEffect, lootDrops, selectedTile, selectedAction } = useGameStore();
+    const battleMap = useGameStore(s => s.battleMap);
+    const battleHazards = useGameStore(s => s.battleHazards);
+    const voxelStructures = useGameStore(s => s.voxelStructures);
+    const damagePopups = useGameStore(s => s.damagePopups);
+    const handleTileHover = useGameStore(s => s.handleTileHover);
+    const dimension = useGameStore(s => s.dimension);
+    const hasActed = useGameStore(s => s.hasActed);
+    const hasMoved = useGameStore(s => s.hasMoved);
+    const activeSpellEffect = useGameStore(s => s.activeSpellEffect);
+    const lootDrops = useGameStore(s => s.lootDrops);
+    const selectedTile = useGameStore(s => s.selectedTile);
+    const selectedAction = useGameStore(s => s.selectedAction);
+
     const isShadowRealm = dimension === Dimension.UPSIDE_DOWN;
     const isMoveMode = selectedAction === 'MOVE';
     const activeEntity = entities.find((e: Entity) => e.id === currentTurnEntityId);
