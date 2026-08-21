@@ -9,7 +9,11 @@ interface UnitPortraitProps {
     scale?: number;
 }
 
-export const UnitPortrait: React.FC<UnitPortraitProps> = ({ entity, className = "w-full h-full", scale = 1.5 }) => {
+/**
+ * UnitPortrait rendered with React.memo to avoid costly image DOM reconciliations
+ * when turn orders, initiative panels, or battle state update without entity changes.
+ */
+export const UnitPortrait: React.FC<UnitPortraitProps> = React.memo(({ entity, className = "w-full h-full", scale = 1.5 }) => {
     const rawSpriteUrl = entity.visual?.spriteUrl;
     const spriteUrl = sanitizeAssetUrl(rawSpriteUrl);
     const isPriest = (spriteUrl && spriteUrl.toLowerCase().includes('priest')) || entity.stats?.class === CharacterClass.CLERIC;
@@ -51,4 +55,4 @@ export const UnitPortrait: React.FC<UnitPortraitProps> = ({ entity, className = 
             style={{ transform: `scale(${scale}) translateY(10%)` }}
         />
     );
-};
+});

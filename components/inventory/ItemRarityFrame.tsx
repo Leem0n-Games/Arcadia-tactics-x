@@ -14,7 +14,11 @@ interface ItemRarityFrameProps {
     onMouseLeave?: () => void;
 }
 
-export const ItemRarityFrame: React.FC<ItemRarityFrameProps> = ({
+/**
+ * ItemRarityFrame render frame with memoization to prevent unnecessary re-renders
+ * during inventory grid filtering, selection, and scrolling updates.
+ */
+export const ItemRarityFrame: React.FC<ItemRarityFrameProps> = React.memo(({
     rarity,
     children,
     className = '',
@@ -88,4 +92,4 @@ export const ItemRarityFrame: React.FC<ItemRarityFrameProps> = ({
             {children}
         </div>
     );
-};
+});
