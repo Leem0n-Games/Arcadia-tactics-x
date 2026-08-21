@@ -268,7 +268,7 @@ export function importSavesFromJson(jsonString: string): { success: boolean; imp
     // Format 1: Multi-slot bundle
     if (parsed.slots && typeof parsed.slots === 'object') {
       Object.keys(parsed.slots).forEach((key) => {
-        if (SLOT_KEYS[key as SaveSlotId]) {
+        if (Object.prototype.hasOwnProperty.call(SLOT_KEYS, key)) {
           localStorage.setItem(SLOT_KEYS[key as SaveSlotId], JSON.stringify(parsed.slots[key]));
           count++;
         }
