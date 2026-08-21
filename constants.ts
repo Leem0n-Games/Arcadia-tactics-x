@@ -381,9 +381,23 @@ export const getSprite = (race: CharacterRace, cls: CharacterClass) => {
 
 export const sanitizeAssetUrl = (url: string | undefined): string => {
     if (!url) return '';
+    let sanitized = url.trim();
+
+    // Block dangerous URI schemes to prevent XSS (e.g. javascript:, vbscript:)
+    const lower = sanitized.toLowerCase();
+    if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) {
+        return '';
+    }
+
+    // Allow data URIs only if they are images
+    if (lower.startsWith('data:')) {
+        if (!lower.startsWith('data:image/')) {
+            return '';
+        }
+    }
+
     const remoteWesnoth = "https://raw.githubusercontent.com/wesnoth/wesnoth/master/data/core/images";
     const remoteMc = "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.20.4/assets/minecraft/textures/block";
-    let sanitized = url.trim();
     if (sanitized.startsWith(remoteWesnoth)) {
         sanitized = sanitized.replace(remoteWesnoth, "/assets/wesnoth");
     } else if (sanitized.startsWith(remoteMc)) {
