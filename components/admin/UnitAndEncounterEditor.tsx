@@ -113,9 +113,9 @@ export const UnitAndEncounterEditor: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Asset Picker */}
-                        <div className="bg-slate-900/50 p-4 rounded border border-slate-700 space-y-3">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase">Visuals</h4>
+                        {/* Asset Picker & Sprite Parameters Editor */}
+                        <div className="bg-slate-900/50 p-4 rounded border border-slate-700 space-y-4">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase">Visuals & Sprite Sheet Configuration</h4>
                             <div className="flex gap-4 items-start">
                                 <div className="w-24 h-24 bg-slate-950 border border-slate-600 rounded flex items-center justify-center shrink-0">
                                     {editForm.sprite ? <img src={editForm.sprite} className="w-full h-full object-contain pixelated" /> : <span className="text-xs text-slate-600">No Image</span>}
@@ -134,6 +134,128 @@ export const UnitAndEncounterEditor: React.FC = () => {
                                     </div>
                                     <div className="text-[10px] text-slate-600">Or copy existing URL:</div>
                                     <input type="text" value={editForm.sprite} onChange={e => setEditForm({...editForm, sprite: e.target.value})} className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1 text-[10px] text-slate-400" />
+                                </div>
+                            </div>
+
+                            {/* Spritesheet Tuning Parameters */}
+                            <div className="border-t border-slate-800 pt-3 mt-2 space-y-3">
+                                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-500 block">Detección y Dimensiones de Sprite</span>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/40 p-3 rounded border border-slate-800/80">
+                                    <div>
+                                        <label className="text-[10px] text-slate-400 block mb-1 font-bold">Filas (Grid Rows)</label>
+                                        <input 
+                                            type="number" 
+                                            min={1}
+                                            value={editForm.spriteConfig?.rows || 1} 
+                                            onChange={e => {
+                                                const rows = Math.max(1, parseInt(e.target.value) || 1);
+                                                setEditForm({
+                                                    ...editForm,
+                                                    spriteConfig: { ...(editForm.spriteConfig || { cols: 1 }), rows }
+                                                });
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-amber-400 font-mono focus:border-amber-500 outline-none" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-slate-400 block mb-1 font-bold">Columnas (Grid Cols)</label>
+                                        <input 
+                                            type="number" 
+                                            min={1}
+                                            value={editForm.spriteConfig?.cols || 1} 
+                                            onChange={e => {
+                                                const cols = Math.max(1, parseInt(e.target.value) || 1);
+                                                setEditForm({
+                                                    ...editForm,
+                                                    spriteConfig: { ...(editForm.spriteConfig || { rows: 1 }), cols }
+                                                });
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-amber-400 font-mono focus:border-amber-500 outline-none" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-slate-400 block mb-1 font-bold">Ancho Base (Width)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.05"
+                                            value={editForm.spriteConfig?.charWidth ?? 0.8} 
+                                            onChange={e => {
+                                                const charWidth = parseFloat(e.target.value) || 0.8;
+                                                setEditForm({
+                                                    ...editForm,
+                                                    spriteConfig: { ...(editForm.spriteConfig || { rows: 1, cols: 1 }), charWidth }
+                                                });
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-emerald-400 font-mono focus:border-emerald-500 outline-none" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-slate-400 block mb-1 font-bold">Alto Base (Height)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.05"
+                                            value={editForm.spriteConfig?.charHeight ?? 0.8} 
+                                            onChange={e => {
+                                                const charHeight = parseFloat(e.target.value) || 0.8;
+                                                setEditForm({
+                                                    ...editForm,
+                                                    spriteConfig: { ...(editForm.spriteConfig || { rows: 1, cols: 1 }), charHeight }
+                                                });
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-emerald-400 font-mono focus:border-emerald-500 outline-none" 
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-3 bg-slate-950/40 p-3 rounded border border-slate-800/80">
+                                    <div>
+                                        <label className="text-[10px] text-slate-400 block mb-1 font-bold">Escala Horiz. (scaleX)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.1"
+                                            value={editForm.spriteConfig?.scaleX ?? 1.0} 
+                                            onChange={e => {
+                                                const scaleX = parseFloat(e.target.value) || 1.0;
+                                                setEditForm({
+                                                    ...editForm,
+                                                    spriteConfig: { ...(editForm.spriteConfig || { rows: 1, cols: 1 }), scaleX }
+                                                });
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-sky-400 font-mono focus:border-sky-500 outline-none" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-slate-400 block mb-1 font-bold">Escala Vert. (scaleY)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.1"
+                                            value={editForm.spriteConfig?.scaleY ?? 1.0} 
+                                            onChange={e => {
+                                                const scaleY = parseFloat(e.target.value) || 1.0;
+                                                setEditForm({
+                                                    ...editForm,
+                                                    spriteConfig: { ...(editForm.spriteConfig || { rows: 1, cols: 1 }), scaleY }
+                                                });
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-sky-400 font-mono focus:border-sky-500 outline-none" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-slate-400 block mb-1 font-bold">Desplazamiento Y (yOffset)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            value={editForm.spriteConfig?.yOffset ?? 0.0} 
+                                            onChange={e => {
+                                                const yOffset = parseFloat(e.target.value) || 0.0;
+                                                setEditForm({
+                                                    ...editForm,
+                                                    spriteConfig: { ...(editForm.spriteConfig || { rows: 1, cols: 1 }), yOffset }
+                                                });
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-orange-400 font-mono focus:border-orange-500 outline-none" 
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>

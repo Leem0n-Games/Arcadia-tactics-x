@@ -1,5 +1,5 @@
 import { Dimension, Difficulty, GameState, GameStateData, SaveFile, SaveSlotId, SaveSlotMeta } from '../types';
-import { DEFAULT_MAP_HEIGHT, DEFAULT_MAP_WIDTH } from '../constants';
+import { DEFAULT_MAP_HEIGHT, DEFAULT_MAP_WIDTH, sanitizeAssetUrl } from '../constants';
 
 export type { SaveSlotMeta };
 
@@ -108,11 +108,24 @@ export function deserializeGameState(saveFile: SaveFile): Partial<GameStateData>
   };
   const clearedEncounters = new Set<string>(data.clearedEncounters || []);
 
+  const sanitizedParty = (data.party || []).map((p: any) => {
+    if (p && p.visual && p.visual.spriteUrl) {
+      return {
+        ...p,
+        visual: {
+          ...p.visual,
+          spriteUrl: sanitizeAssetUrl(p.visual.spriteUrl)
+        }
+      };
+    }
+    return p;
+  });
+
   return {
     ...data,
     exploredTiles,
     clearedEncounters,
-    party: data.party || [],
+    party: sanitizedParty,
     inventory: data.inventory || [],
     visitedTowns: data.visitedTowns || {},
     mapDimensions: data.mapDimensions || { width: DEFAULT_MAP_WIDTH, height: DEFAULT_MAP_HEIGHT },

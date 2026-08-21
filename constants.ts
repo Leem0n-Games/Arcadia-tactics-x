@@ -133,6 +133,7 @@ export const ASSETS = {
         PLAYER_WIZARD: `${WESNOTH_BASE_URL}/units/human-magi/red-mage.png`,
         PLAYER_ROGUE: `${WESNOTH_BASE_URL}/units/human-outlaws/thief.png`,
         PLAYER_CLERIC: '/assets/players/priest/spritesheetpriest.png',
+        PLAYER_CLERIC_ROSTER: '/assets/players/priest/priest_roster.png',
         PLAYER_BARBARIAN: `${WESNOTH_BASE_URL}/units/human-outlaws/thug.png`,
         PLAYER_BARD: `${WESNOTH_BASE_URL}/units/human-loyalists/fencer.png`,
         PLAYER_DRUID: `${WESNOTH_BASE_URL}/units/elves-wood/shaman.png`,
@@ -376,6 +377,19 @@ export const getSprite = (race: CharacterRace, cls: CharacterClass) => {
         default:
             return ASSETS.UNITS.PLAYER_FIGHTER;
     }
+};
+
+export const sanitizeAssetUrl = (url: string | undefined): string => {
+    if (!url) return '';
+    const remoteWesnoth = "https://raw.githubusercontent.com/wesnoth/wesnoth/master/data/core/images";
+    const remoteMc = "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.20.4/assets/minecraft/textures/block";
+    let sanitized = url.trim();
+    if (sanitized.startsWith(remoteWesnoth)) {
+        sanitized = sanitized.replace(remoteWesnoth, "/assets/wesnoth");
+    } else if (sanitized.startsWith(remoteMc)) {
+        sanitized = sanitized.replace(remoteMc, "/assets/minecraft");
+    }
+    return sanitized;
 }; 
 
 export const SPELLS: Record<string, Spell> = {

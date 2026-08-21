@@ -1,8 +1,8 @@
 
 import { StateCreator } from 'zustand';
-import { GameState, TerrainType, WeatherType, BattleCell, VoxelBlock, BattleAction, Spell, Entity, CombatStatsComponent, PositionComponent, DamagePopup, SpellEffectData, SpellType, CharacterClass, VisualComponent, AIBehavior, LootDrop, ItemRarity, Item, EquipmentSlot, Dimension, InitiativeRollDetail, BattleHazard, BattleHazardType, isFriendly } from '../../types';
+import { GameState, TerrainType, WeatherType, BattleCell, VoxelBlock, BattleAction, Spell, Entity, CombatStatsComponent, PositionComponent, DamagePopup, SpellEffectData, SpellType, CharacterClass, VisualComponent, AIBehavior, LootDrop, ItemRarity, Item, EquipmentSlot, Dimension, InitiativeRollDetail, BattleHazard, BattleHazardType, isFriendly, AttackForecast } from '../../types';
 import { findBattlePath } from '../../services/pathfinding';
-import { rollD20, rollDice, checkLineOfSight, calculateCoverBonus, calculateAttackRoll, calculateDamage, calculateDetailedAttackRoll, calculateDetailedDamage, calculateEnemyStats, calculateInitiativeRolls, resolveHazardEntry, resolveHazardTurnTick } from '../../services/dndRules';
+import { rollD20, rollDice, checkLineOfSight, calculateCoverBonus, calculateAttackRoll, calculateDamage, calculateDetailedAttackRoll, calculateDetailedDamage, calculateEnemyStats, calculateInitiativeRolls, resolveHazardEntry, resolveHazardTurnTick, getAttackingModifierAndName, getModifier, getProficiencyBonus } from '../../services/dndRules';
 import { sfx } from '../../services/SoundSystem';
 import { ASSETS, BATTLE_MAP_SIZE, TERRAIN_COLORS, ITEMS } from '../../constants';
 import { generateVoxelDioramaFeatures } from '../../services/VoxelDioramaGenerator';
@@ -62,7 +62,7 @@ export interface BattleSlice {
   restartBattle: () => void;
   continueAfterVictory: () => void;
   hasLineOfSight: (source: PositionComponent, target: PositionComponent) => boolean;
-  getAttackPrediction: () => any | null;
+  getAttackPrediction: (targetEntityOverride?: Entity | null) => any | null;
   destroyObstacle: (x: number, z: number) => void;
   removeDamagePopup: (id: string) => void;
 }
@@ -213,7 +213,8 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
                 color: isThisEnemyBoss ? '#e11d48' : (isShadow ? '#1e293b' : '#ef4444'), 
                 modelType: 'billboard', 
                 spriteUrl: enemyDef.sprite,
-                scale: isThisEnemyBoss ? 1.8 : 1.0
+                scale: isThisEnemyBoss ? 1.8 : 1.0,
+                spriteConfig: enemyDef.spriteConfig
             }, 
             position: getEnemySpawn() 
           });
@@ -326,7 +327,8 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
           color: isOverseer ? '#a855f7' : '#ef4444',
           modelType: 'billboard',
           spriteUrl: enemyDef.sprite,
-          scale: isOverseer ? 1.6 : 1.1
+          scale: isOverseer ? 1.6 : 1.1,
+          spriteConfig: enemyDef.spriteConfig
         },
         position: spawnPos,
         behavior: aiBehavior
@@ -380,7 +382,7 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
         if (battleEntities.find(e => e.id === firstId)?.type === 'ENEMY') {
           setTimeout(() => { get().nextTurn(); }, 1000);
         } else {
-          set({ selectedAction: BattleAction.MOVE });
+          set({ selectedAction: null });
         }
       }
     });
@@ -437,7 +439,7 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
           set({ 
               battleEntities: updatedEntities, 
               hasMoved: true, 
-              selectedAction: BattleAction.ATTACK, 
+              selectedAction: null, 
               selectedTile: null,
               damagePopups: finalPopups
           });
@@ -1030,7 +1032,7 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
       selectedTile: null, 
       hasMoved: false, 
       hasActed: false, 
-      selectedAction: nextEntity.type === 'PLAYER' ? BattleAction.MOVE : null, 
+      selectedAction: null, 
       selectedSpell: null, 
       hoveredEntity: null, 
       activeSpellEffect: null, 
@@ -1053,9 +1055,9 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
         const updates = performEnemyAction(currentState, me, targets, set); 
         if (updates) set(updates); 
         const hadDiceRoll = !!get().activeDiceRoll;
-        const delay = hadDiceRoll ? 2200 : 1000;
+        const delay = hadDiceRoll ? 1100 : 450;
         setTimeout(() => get().nextTurn(), delay); 
-      }, 800); 
+      }, 450); 
     } 
   },
   attemptRun: () => { const state = get(); const activeId = state.turnOrder[state.currentTurnIndex]; const activeEntity = state.battleEntities.find(e => e.id === activeId); if (activeEntity && activeEntity.stats.stamina < STAT_COSTS.RUN) { state.addLog("Too exhausted!", "combat"); return; } if (activeEntity) { const newStamina = activeEntity.stats.stamina - STAT_COSTS.RUN; set(s => ({ battleEntities: s.battleEntities.map(e => e.id === activeId ? { ...e, stats: { ...e.stats, stamina: newStamina } } : e) })); } const hpFactor = (activeEntity?.stats.hp || 1) / (activeEntity?.stats.maxHp || 1); const escapeChance = Math.min(0.95, Math.max(0.2, 0.5 + (hpFactor * 0.2))); if (Math.random() < escapeChance) { get().addLog("Escaped!", "narrative"); set({ gameState: GameState.OVERWORLD, damagePopups: [], gracePeriodEndTime: Date.now() + 5000 }); } else { get().addLog("Failed escape!", "combat"); get().nextTurn(); } },
@@ -1103,5 +1105,148 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
     }
   },
   hasLineOfSight: (source, target) => checkLineOfSight(source, target, get().battleMap),
-  getAttackPrediction: () => null
+  getAttackPrediction: (targetEntityOverride?: Entity | null) => {
+    const state = get();
+    const activeId = state.turnOrder[state.currentTurnIndex];
+    const activeEntity = state.battleEntities.find(e => e.id === activeId);
+
+    if (!activeEntity || activeEntity.type !== 'PLAYER') return null;
+
+    const targetEntity = targetEntityOverride || state.hoveredEntity || (state.selectedTile ? state.battleEntities.find(e => e.position.x === state.selectedTile!.x && e.position.y === state.selectedTile!.z) : null);
+
+    if (!targetEntity || targetEntity.id === activeEntity.id || targetEntity.stats.hp <= 0) {
+      return null;
+    }
+
+    const isFriendlyTarget = isFriendly(activeEntity, targetEntity);
+    const selectedSpell = state.selectedSpell;
+    const isMagicMode = state.selectedAction === BattleAction.MAGIC || !!selectedSpell;
+
+    const start = activeEntity.position;
+    const target = targetEntity.position;
+
+    const startCell = state.battleMap.find(c => c.x === start.x && c.z === start.y);
+    const targetCell = state.battleMap.find(c => c.x === target.x && c.z === target.y);
+
+    const startY = startCell ? (startCell.offsetY || 0) + startCell.height : 0.5;
+    const targetY = targetCell ? (targetCell.offsetY || 0) + targetCell.height : 0.5;
+
+    const hasHighGround = startY > targetY + 0.5;
+    const heightBonus = hasHighGround ? 2 : 0;
+
+    const coverBonus = calculateCoverBonus(start, target, state.battleMap);
+    const isFullCover = coverBonus === 99;
+    const isHalfCover = coverBonus === 2;
+
+    if (isMagicMode && selectedSpell) {
+      const isHealing = selectedSpell.type === SpellType.HEAL || selectedSpell.name.toLowerCase().includes('curar') || selectedSpell.name.toLowerCase().includes('heal');
+      
+      const attrKey = [CharacterClass.WIZARD].includes(activeEntity.stats.class) ? 'INT' :
+                      [CharacterClass.CLERIC, CharacterClass.DRUID, CharacterClass.RANGER].includes(activeEntity.stats.class) ? 'WIS' : 'CHA';
+      const spellAttrMod = getModifier(activeEntity.stats.attributes[attrKey] || 10);
+      const profBonus = getProficiencyBonus(activeEntity.stats.level);
+      const spellModTotal = spellAttrMod + profBonus;
+
+      if (isHealing) {
+        const minDmg = selectedSpell.diceCount + spellAttrMod;
+        const maxDmg = (selectedSpell.diceCount * selectedSpell.diceSides) + spellAttrMod;
+        const avgDmg = Math.round((selectedSpell.diceCount * (selectedSpell.diceSides + 1) / 2) + spellAttrMod);
+        const projectedHp = Math.min(targetEntity.stats.maxHp, targetEntity.stats.hp + avgDmg);
+
+        return {
+          attacker: activeEntity,
+          target: targetEntity,
+          actionName: selectedSpell.name,
+          actionIcon: '✨',
+          actionType: 'HEAL',
+          hitChance: 100,
+          minDamage: minDmg,
+          maxDamage: maxDmg,
+          avgDamage: avgDmg,
+          diceFormula: `${selectedSpell.diceCount}d${selectedSpell.diceSides}+${spellAttrMod}`,
+          currentHp: targetEntity.stats.hp,
+          maxHp: targetEntity.stats.maxHp,
+          projectedHp,
+          isHealing: true,
+          isFriendlyTarget
+        } as AttackForecast;
+      }
+
+      const effectiveAC = targetEntity.stats.ac + (isFullCover ? 0 : coverBonus);
+      const totalSpellMod = spellModTotal + heightBonus;
+      const neededD20 = effectiveAC - totalSpellMod;
+      const hitChance = isFullCover ? 0 : Math.max(5, Math.min(95, Math.round(((21 - neededD20) / 20) * 100)));
+
+      const diceCount = selectedSpell.diceCount;
+      const diceSides = selectedSpell.diceSides;
+      const minDmg = diceCount;
+      const maxDmg = diceCount * diceSides;
+      const avgDmg = Math.round(diceCount * (diceSides + 1) / 2);
+      const projectedHp = Math.max(0, targetEntity.stats.hp - avgDmg);
+
+      return {
+        attacker: activeEntity,
+        target: targetEntity,
+        actionName: selectedSpell.name,
+        actionIcon: '🔮',
+        actionType: 'SPELL',
+        hitChance,
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        avgDamage: avgDmg,
+        diceFormula: `${diceCount}d${diceSides}`,
+        currentHp: targetEntity.stats.hp,
+        maxHp: targetEntity.stats.maxHp,
+        projectedHp,
+        isHealing: false,
+        isFullCover,
+        isHalfCover,
+        hasHighGround,
+        isFriendlyTarget,
+        effectiveAC
+      } as AttackForecast;
+    }
+
+    const weapon = activeEntity.equipment[EquipmentSlot.MAIN_HAND];
+    const { mod } = getAttackingModifierAndName(activeEntity, weapon);
+    const profBonus = getProficiencyBonus(activeEntity.stats.level);
+
+    const effectiveAC = targetEntity.stats.ac + (isFullCover ? 0 : coverBonus);
+    const totalAttackMod = mod + profBonus + heightBonus;
+    const neededD20 = effectiveAC - totalAttackMod;
+    const hitChance = isFullCover ? 0 : Math.max(5, Math.min(95, Math.round(((21 - neededD20) / 20) * 100)));
+
+    const diceCount = weapon?.equipmentStats?.diceCount || 1;
+    const diceSides = weapon?.equipmentStats?.diceSides || (weapon ? 4 : 1);
+    const attrBonus = mod;
+
+    const minDmg = Math.max(1, diceCount * 1 + attrBonus);
+    const maxDmg = Math.max(1, diceCount * diceSides + attrBonus);
+    const avgDmg = Math.max(1, Math.round((diceCount * (diceSides + 1) / 2) + attrBonus));
+    const projectedHp = Math.max(0, targetEntity.stats.hp - avgDmg);
+
+    const isRanged = weapon?.equipmentStats?.properties?.includes('Range');
+
+    return {
+      attacker: activeEntity,
+      target: targetEntity,
+      actionName: weapon?.name || 'Ataque Físico',
+      actionIcon: isRanged ? '🏹' : '⚔️',
+      actionType: isRanged ? 'RANGED' : 'MELEE',
+      hitChance,
+      minDamage: minDmg,
+      maxDamage: maxDmg,
+      avgDamage: avgDmg,
+      diceFormula: `${diceCount}d${diceSides}${attrBonus > 0 ? `+${attrBonus}` : attrBonus < 0 ? `${attrBonus}` : ''}`,
+      currentHp: targetEntity.stats.hp,
+      maxHp: targetEntity.stats.maxHp,
+      projectedHp,
+      isHealing: false,
+      isFullCover,
+      isHalfCover,
+      hasHighGround,
+      isFriendlyTarget,
+      effectiveAC
+    } as AttackForecast;
+  }
 });

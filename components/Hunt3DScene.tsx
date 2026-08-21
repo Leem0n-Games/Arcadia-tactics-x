@@ -9,6 +9,7 @@ import { textureManager, getTextureDiagnostics, printTextureDiagnosticsConsole }
 import { Base3DRenderer, BaseVoxelRenderer, STANDARD_3D_SCALES, CHIBI_SCALES, getChibiProportions } from './Base3DRenderer';
 import { calculateChibiSquashAndStretch } from '../services/chibiScaling';
 import { DEFAULT_COZY_GRADIENT_MAP, injectCozyCelShader } from '../services/toonShader';
+import { ModularBillboard } from './three/ModularBillboard';
 
 const _targetLookAt = new THREE.Vector3();
 
@@ -82,24 +83,14 @@ const HuntPlayer3D = ({
 }: {
   position: { x: number; y: number; z: number };
 }) => {
-  const playerTexture = textureManager.get3DTexture(ASSETS.UNITS.PLAYER_RANGER, '#38bdf8');
-  const chibiProps = getChibiProportions({ name: 'Huntsman', type: 'PLAYER' });
-  const charHeight = chibiProps.height;
-  const charWidth = chibiProps.width;
-  const floorOffset = CHIBI_SCALES.FLOOR_Y_OFFSET;
-  const spriteGroupRef = useRef<THREE.Group>(null);
+  const { party } = useGameStore();
+  const leader = party[0];
+  const leaderSpriteUrl = leader?.visual?.spriteUrl || ASSETS.UNITS.PLAYER_RANGER;
+  const leaderColor = leader?.visual?.color || '#38bdf8';
+  const spriteConfig = leader?.visual?.spriteConfig;
 
-  useFrame((state) => {
-    if (spriteGroupRef.current) {
-      const anim = calculateChibiSquashAndStretch({
-        time: state.clock.elapsedTime,
-        phaseOffset: 0,
-        isMoving: false
-      });
-      spriteGroupRef.current.position.y = anim.bobY;
-      spriteGroupRef.current.scale.set(anim.scaleX, anim.scaleY, 1.0);
-    }
-  });
+  const chibiProps = getChibiProportions({ name: leader?.name || 'Huntsman', type: 'PLAYER' });
+  const floorOffset = CHIBI_SCALES.FLOOR_Y_OFFSET;
 
   return (
     <group position={[position.x, position.y + 0.5, position.z]}>
@@ -115,27 +106,14 @@ const HuntPlayer3D = ({
         <meshBasicMaterial color="#38bdf8" transparent opacity={0.85} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Huntsman Player Standardized Billboard Avatar */}
-      <Billboard follow lockX={false} lockY={false} lockZ={false}>
-        <group ref={spriteGroupRef}>
-          {/* Crisp Chibi Ink Outline Backdrop */}
-          <mesh position={[0, charHeight / 2, -0.01]} scale={[1.06, 1.06, 1]}>
-            <planeGeometry args={[charWidth, charHeight]} />
-            <meshBasicMaterial map={playerTexture} transparent alphaTest={0.4} color="#0f172a" side={THREE.DoubleSide} />
-          </mesh>
-          <mesh position={[0, charHeight / 2, 0]}>
-            <planeGeometry args={[charWidth, charHeight]} />
-            <meshToonMaterial
-              map={playerTexture}
-              gradientMap={DEFAULT_COZY_GRADIENT_MAP}
-              transparent
-              alphaTest={0.4}
-              side={THREE.DoubleSide}
-              onUpdate={(mat) => injectCozyCelShader(mat, { rimColor: '#38bdf8', rimIntensity: 0.35 })}
-            />
-          </mesh>
-        </group>
-      </Billboard>
+      {/* Reusable, Auto-Slicing Modular Billboard */}
+      <ModularBillboard
+        url={leaderSpriteUrl}
+        turnColor={leaderColor}
+        isCurrentTurn={false}
+        hp={100}
+        config={spriteConfig}
+      />
     </group>
   );
 };

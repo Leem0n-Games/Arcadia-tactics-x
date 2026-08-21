@@ -127,7 +127,9 @@ export const LevelUpModal: React.FC = () => {
           <div className="flex flex-row items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-900/60 border border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-amber-400/50 p-1 flex items-center justify-center shadow-lg relative overflow-hidden shrink-0">
-                {currentLevelUp.spriteUrl ? (
+                {currentLevelUp.className === 'CLERIC' || (currentLevelUp.spriteUrl && currentLevelUp.spriteUrl.toLowerCase().includes('priest')) ? (
+                  <img src="/assets/players/priest/priest_roster.png" alt={currentLevelUp.entityName} className="w-full h-full object-contain pixelated" />
+                ) : currentLevelUp.spriteUrl ? (
                   <img src={currentLevelUp.spriteUrl} alt={currentLevelUp.entityName} className="w-full h-full object-contain pixelated" />
                 ) : (
                   <span className="text-xl">👤</span>

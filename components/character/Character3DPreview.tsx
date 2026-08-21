@@ -41,15 +41,17 @@ export const Character3DPreview: React.FC<Character3DPreviewProps> = ({
           
           {/* Portrait */}
           <div className="w-28 h-28 bg-gradient-to-b from-amber-950 to-slate-900 rounded-2xl border-2 border-amber-500/60 shadow-xl overflow-hidden flex items-center justify-center shrink-0">
-            {spriteUrl && (spriteUrl.toLowerCase().includes('priest') || spriteUrl.toLowerCase().includes('fighter')) ? (
+            {cls === CharacterClass.CLERIC || (spriteUrl && spriteUrl.toLowerCase().includes('priest')) ? (
+              <img 
+                src="/assets/players/priest/priest_roster.png" 
+                alt="Character Portrait" 
+                className="w-full h-full object-contain pixelated p-1" 
+              />
+            ) : cls === CharacterClass.FIGHTER || (spriteUrl && spriteUrl.toLowerCase().includes('fighter')) ? (
               <div 
                 className="w-full h-full pixelated"
                 style={{
-                  backgroundImage: `url(${
-                    spriteUrl.toLowerCase().includes('priest')
-                      ? '/assets/players/priest/spritesheetpriest.png'
-                      : '/assets/fighter/fighter_walk.png'
-                  })`,
+                  backgroundImage: `url(/assets/fighter/fighter_walk.png)`,
                   backgroundSize: '400% 400%',
                   backgroundPosition: '0% 0%', // Top-left frame
                   imageRendering: 'pixelated'

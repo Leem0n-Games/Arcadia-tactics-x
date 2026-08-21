@@ -21,6 +21,15 @@ export interface EnemyDefinition {
     xpReward: number;
     damage: number; // Base damage (e.g. 4 = 1d4 approx)
     initiativeBonus: number;
+    spriteConfig?: {
+        rows: number;
+        cols: number;
+        charWidth?: number;
+        charHeight?: number;
+        scaleX?: number;
+        scaleY?: number;
+        yOffset?: number;
+    };
 }
 
 interface ContentState {

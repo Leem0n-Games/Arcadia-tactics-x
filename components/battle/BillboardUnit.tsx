@@ -9,6 +9,7 @@ import { DEFAULT_COZY_GRADIENT_MAP, injectCozyCelShader, PulsingOutlineShaderMat
 import { STANDARD_3D_SCALES } from '../Base3DRenderer';
 import { useGameStore } from '../../store/gameStore';
 import { BattleAction } from '../../types';
+import { ModularBillboard } from '../three/ModularBillboard';
 
 const SpriteComponent = ({ 
     url, 
@@ -235,7 +236,7 @@ const SpriteComponent = ({
             {/* Crisp Chibi Cel/Ink Outline Backdrop */}
             <mesh position={[0, 0, -0.01]} scale={[1.06, 1.06, 1]}>
                 <planeGeometry args={[charWidth, finalCharHeight]} />
-                <meshBasicMaterial map={texture} transparent alphaTest={0.5} color="#0f172a" side={THREE.DoubleSide} />
+                <meshBasicMaterial map={texture} transparent alphaTest={0.1} color="#0f172a" side={THREE.DoubleSide} />
             </mesh>
 
             {/* Primary Cel-Shaded Character Sprite */}
@@ -245,7 +246,7 @@ const SpriteComponent = ({
                     map={texture} 
                     gradientMap={DEFAULT_COZY_GRADIENT_MAP}
                     transparent 
-                    alphaTest={0.5} 
+                    alphaTest={0.1} 
                     color={isFlashing ? '#ff4444' : 'white'} 
                     emissive={isFlashing ? '#ff0000' : isCurrentTurn ? (turnColor || '#fbbf24') : '#000000'}
                     emissiveIntensity={isFlashing ? 1.5 : isCurrentTurn ? 0.22 : 0}
@@ -282,6 +283,7 @@ export const BillboardUnit = React.memo(({
   position, 
   color, 
   spriteUrl, 
+  spriteConfig,
   isCurrentTurn, 
   hp, 
   maxHp, 
@@ -492,18 +494,17 @@ export const BillboardUnit = React.memo(({
 
         <Billboard follow={true} lockX={true} lockY={false} lockZ={true}>
             <group ref={spriteGroupRef} onClick={handleClick} onPointerDown={handleClick}>
-                <SpriteComponent 
+                <ModularBillboard 
                     url={spriteUrl} 
                     isFlashing={isFlashing} 
                     isCurrentTurn={isCurrentTurn}
-                    turnColor={color}
-                    charWidth={charWidth}
-                    charHeight={charHeight}
+                    turnColor={color || '#fbbf24'}
                     hp={hp}
                     isWalking={isWalking}
                     isCasting={isCasting}
                     isAttacking={isAttacking}
                     isVictory={isVictory}
+                    config={spriteConfig}
                 />
             </group>
 

@@ -2,7 +2,7 @@
 import { StateCreator } from 'zustand';
 import { CharacterRace, CharacterClass, Attributes, Difficulty, EquipmentSlot, Item, Ability, Entity, CombatStatsComponent, VisualComponent, Dimension, GameState, PendingLevelUp, TerrainType } from '../../types';
 import { calculateHp, getModifier, calculateVisionRange, getHitDieForClass, getCasterSpellSlots, calculateMaxStamina, calculateLevelHpGain, getProficiencyBonus, rollDice } from '../../services/dndRules';
-import { BASE_STATS, RACE_BONUS, XP_TABLE, ITEMS, CLASS_EQUIPMENT_PACKAGES, getSprite, ASSETS } from '../../constants';
+import { BASE_STATS, RACE_BONUS, XP_TABLE, ITEMS, CLASS_EQUIPMENT_PACKAGES, getSprite, ASSETS, sanitizeAssetUrl } from '../../constants';
 import { sfx } from '../../services/SoundSystem';
 import { GameStore } from '../gameStore';
 import { useContentStore } from '../contentStore';
@@ -196,6 +196,10 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
   },
 
   recalculateStats: (entity) => {
+    // Sanitize any remote github raw paths back to local paths for robust local asset serving
+    if (entity.visual && entity.visual.spriteUrl) {
+        entity.visual.spriteUrl = sanitizeAssetUrl(entity.visual.spriteUrl);
+    }
     // Sprite Migration/Repair logic for Clerics & Fighters (ensures saves use new high-quality sprites)
     if (entity.stats.class === CharacterClass.CLERIC && entity.visual && !entity.visual.spriteUrl.includes('spritesheetpriest.png')) {
         entity.visual.spriteUrl = ASSETS.UNITS.PLAYER_CLERIC;

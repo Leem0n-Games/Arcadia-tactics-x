@@ -2,7 +2,30 @@ import React from 'react';
 import { Entity, EquipmentSlot, Item, CombatStatsComponent, VisualComponent } from '../../types';
 import { getModifier } from '../../services/dndRules';
 import { ItemRarityFrame } from './ItemRarityFrame';
+import { UnitPortrait } from '../ui/UnitPortrait';
 import { sfx } from '../../services/SoundSystem';
+
+// Safe Item Image component with fallback icon if URL fails
+const SafeItemImage: React.FC<{ icon?: string; name: string; fallbackEmoji?: string }> = ({ icon, name, fallbackEmoji = '⚔️' }) => {
+    const [hasError, setHasError] = React.useState(false);
+
+    if (!icon || hasError) {
+        return (
+            <div className="w-full h-full flex items-center justify-center text-amber-300/90 text-lg sm:text-xl drop-shadow select-none">
+                <span>{fallbackEmoji}</span>
+            </div>
+        );
+    }
+
+    return (
+        <img 
+            src={icon} 
+            alt={name} 
+            onError={() => setHasError(true)} 
+            className="w-full h-full object-contain pixelated drop-shadow" 
+        />
+    );
+};
 
 interface CharacterEquipmentSheetProps {
     party: (Entity & { stats: CombatStatsComponent; visual: VisualComponent })[];
@@ -49,12 +72,8 @@ export const CharacterEquipmentSheet: React.FC<CharacterEquipmentSheetProps> = (
                                     : 'bg-slate-900/60 border-white/10 hover:border-white/25 opacity-75 hover:opacity-100'
                             }`}
                         >
-                            <div className="w-8 h-8 rounded-xl overflow-hidden border border-amber-500/50 bg-slate-950 relative shrink-0">
-                                <img 
-                                    src={member.visual.spriteUrl} 
-                                    alt={member.name} 
-                                    className="w-full h-full object-cover scale-150 translate-y-1 pixelated" 
-                                />
+                            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-500/60 bg-gradient-to-b from-slate-900 to-slate-950 shadow-md relative shrink-0 flex items-center justify-center p-0.5">
+                                <UnitPortrait entity={member} />
                             </div>
                             <div className="flex flex-col text-left min-w-0">
                                 <span className={`text-[11px] font-bold truncate max-w-[85px] leading-tight ${isActive ? 'text-amber-300' : 'text-slate-200'}`}>
@@ -72,14 +91,17 @@ export const CharacterEquipmentSheet: React.FC<CharacterEquipmentSheetProps> = (
                 })}
             </div>
 
-            {/* Character Header & Portrait */}
-            <div className="p-3 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center gap-3 shrink-0 relative overflow-hidden">
-                <div className="w-14 h-14 rounded-2xl border border-amber-500/50 bg-slate-950 overflow-hidden shadow-lg relative shrink-0">
-                    <img 
-                        src={activeChar.visual.spriteUrl} 
-                        alt={activeChar.name} 
-                        className="w-full h-full object-cover scale-150 translate-y-1 pixelated" 
-                    />
+            {/* Character Header & Relic Portrait Badge */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-b from-slate-900/80 to-slate-950/90 border border-white/10 flex items-center gap-3 shrink-0 relative overflow-hidden shadow-xl">
+                {/* Hero Badge Container */}
+                <div className="w-16 h-16 rounded-2xl border-2 border-amber-400/80 bg-gradient-to-b from-amber-950/40 via-slate-900 to-slate-950 overflow-hidden shadow-[0_0_15px_rgba(251,191,36,0.25)] relative shrink-0 flex items-center justify-center p-0.5">
+                    {/* Corner Filigrees */}
+                    <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-amber-300/90 pointer-events-none z-10" />
+                    <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-amber-300/90 pointer-events-none z-10" />
+                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-amber-300/90 pointer-events-none z-10" />
+                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-amber-300/90 pointer-events-none z-10" />
+
+                    <UnitPortrait entity={activeChar} />
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -143,7 +165,7 @@ export const CharacterEquipmentSheet: React.FC<CharacterEquipmentSheetProps> = (
                                 onClick={() => onSelectItem(mainHandItem)}
                                 className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center p-2 relative"
                             >
-                                <img src={mainHandItem.icon} alt={mainHandItem.name} className="w-full h-full object-contain pixelated drop-shadow" />
+                                <SafeItemImage icon={mainHandItem.icon} name={mainHandItem.name} fallbackEmoji="⚔️" />
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -178,7 +200,7 @@ export const CharacterEquipmentSheet: React.FC<CharacterEquipmentSheetProps> = (
                                 onClick={() => onSelectItem(bodyItem)}
                                 className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center p-2 relative"
                             >
-                                <img src={bodyItem.icon} alt={bodyItem.name} className="w-full h-full object-contain pixelated drop-shadow" />
+                                <SafeItemImage icon={bodyItem.icon} name={bodyItem.name} fallbackEmoji="🥋" />
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -213,7 +235,7 @@ export const CharacterEquipmentSheet: React.FC<CharacterEquipmentSheetProps> = (
                                 onClick={() => onSelectItem(offHandItem)}
                                 className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center p-2 relative"
                             >
-                                <img src={offHandItem.icon} alt={offHandItem.name} className="w-full h-full object-contain pixelated drop-shadow" />
+                                <SafeItemImage icon={offHandItem.icon} name={offHandItem.name} fallbackEmoji="🛡️" />
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();

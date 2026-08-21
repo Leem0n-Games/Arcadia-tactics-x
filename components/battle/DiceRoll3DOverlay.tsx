@@ -249,10 +249,10 @@ export const DiceRoll3DOverlay: React.FC<DiceRoll3DOverlayProps> = ({ rollData, 
       }
     }, 900);
 
-    // Auto-dismiss timer (4.2s total so player has ample time to review minimalist modal)
+    // Auto-dismiss timer (1.8s total so player has a punchy review, or can click earlier to close)
     const autoCloseTimer = setTimeout(() => {
       onClose();
-    }, 4200);
+    }, 1800);
 
     return () => {
       clearTimeout(timer);

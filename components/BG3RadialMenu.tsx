@@ -78,10 +78,10 @@ export const BG3RadialMenu: React.FC<BG3RadialMenuProps> = ({
     useEffect(() => {
         if (activeActionMode === BattleAction.ATTACK || (activeActionMode === BattleAction.MAGIC && selectedSpell)) {
             setRadialMenuOpen(false);
-        } else if (activeActionMode === null && !hasActed && !hasMoved) {
+        } else if (activeActionMode === null && !hasActed) {
             setRadialMenuOpen(true);
         }
-    }, [activeActionMode, selectedSpell, hasActed, hasMoved, setRadialMenuOpen]);
+    }, [activeActionMode, selectedSpell, hasActed, setRadialMenuOpen]);
 
     // --- Main Level Radial Actions ---
     const mainActionItems = [

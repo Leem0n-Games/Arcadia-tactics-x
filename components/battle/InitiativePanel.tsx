@@ -86,7 +86,7 @@ export const InitiativePanel: React.FC<InitiativePanelProps> = React.memo(({
                             >
                                 {/* Portrait Container */}
                                 <div 
-                                    className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 bg-slate-900 shadow-md transition-colors ${
+                                    className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden border-2 bg-slate-900 shadow-md transition-all ${
                                         isCurrent 
                                             ? 'border-amber-400 ring-2 ring-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.5)]' 
                                             : isPlayer 

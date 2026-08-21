@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { getThemeConfig } from '../services/themeSystem';
 import { getHitDieForClass, getModifier } from '../services/dndRules';
+import { UnitPortrait } from './ui/UnitPortrait';
 
 interface RestModalProps {
   onClose: () => void;
@@ -196,8 +197,8 @@ export const RestModal: React.FC<RestModalProps> = ({ onClose }) => {
                     >
                       {/* Avatar & Info */}
                       <div className="flex items-center gap-3 w-full sm:w-auto">
-                        <div className="relative w-14 h-14 rounded-xl border border-amber-500/40 bg-slate-950 overflow-hidden shrink-0 shadow-inner">
-                          <img src={member.visual?.spriteUrl} className="w-full h-full object-cover scale-150 translate-y-1 pixelated" />
+                        <div className="relative w-14 h-14 rounded-xl border border-amber-500/40 bg-slate-950 overflow-hidden shrink-0 shadow-inner flex items-center justify-center">
+                          <UnitPortrait entity={member} />
                         </div>
                         
                         <div className="flex flex-col gap-1 min-w-[160px]">

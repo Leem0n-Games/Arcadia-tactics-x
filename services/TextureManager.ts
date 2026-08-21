@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ASSETS, MC_BASE_URL, WESNOTH_BASE_URL } from '../constants';
+import { ASSETS, MC_BASE_URL, WESNOTH_BASE_URL, sanitizeAssetUrl } from '../constants';
 import { VISUAL_CONFIG } from '../constants/visualConfig';
 import { TerrainType } from '../types';
 
@@ -61,7 +61,8 @@ class UnifiedTextureManager {
   public resolveAssetUrl(keyOrUrl: string): string {
     if (!keyOrUrl) return `${MC_BASE_URL}/dirt.png`;
 
-    const trimmed = keyOrUrl.trim();
+    const sanitizedUrl = sanitizeAssetUrl(keyOrUrl);
+    const trimmed = sanitizedUrl.trim();
 
     // 1. Direct Data URLs or HTTP/HTTPS URLs
     if (trimmed.startsWith('data:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {

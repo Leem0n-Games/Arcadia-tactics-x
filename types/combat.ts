@@ -173,6 +173,28 @@ export interface InitiativeRollDetail {
   total?: number;
 }
 
+export interface AttackForecast {
+  attacker: any;
+  target: any;
+  actionName: string;
+  actionIcon?: string;
+  actionType: 'MELEE' | 'RANGED' | 'SPELL' | 'HEAL';
+  hitChance: number;
+  minDamage: number;
+  maxDamage: number;
+  avgDamage: number;
+  diceFormula: string;
+  currentHp: number;
+  maxHp: number;
+  projectedHp: number;
+  isHealing?: boolean;
+  isFullCover?: boolean;
+  isHalfCover?: boolean;
+  hasHighGround?: boolean;
+  isFriendlyTarget?: boolean;
+  effectiveAC?: number;
+}
+
 export interface PendingLevelUp {
   entityId: string;
   newLevel: number;

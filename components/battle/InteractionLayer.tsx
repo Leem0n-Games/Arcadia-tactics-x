@@ -6,6 +6,7 @@ import { BATTLE_MAP_SIZE } from '../../constants';
 import { TargetTrajectoryLine } from './TargetTrajectoryLine';
 import { Tactical3DGridOverlay } from './Tactical3DGridOverlay';
 import { TargetLockRing3D } from './TargetLockRing3D';
+import { CombatForecastOverlay } from './CombatForecastOverlay';
 import { checkLineOfSight } from '../../services/dndRules';
 
 export const InteractionLayer = ({ mapData, validMoves, validTargets, attackRangeTiles, onTileClick, onTileHover }: any) => {
@@ -143,13 +144,19 @@ export const InteractionLayer = ({ mapData, validMoves, validTargets, attackRang
 
              {/* 3D Auto-Target Lock Ring & Visual Feedback */}
              {lockedTarget && lockedTarget.id !== activeId && (
-                 <TargetLockRing3D 
-                     targetEntity={lockedTarget}
-                     activeEntity={activeEntity || null}
-                     surfaceY={targetSurfaceY}
-                     selectedAction={selectedAction}
-                     isAutoSnapped={isAutoSnapped}
-                 />
+                 <>
+                   <TargetLockRing3D 
+                       targetEntity={lockedTarget}
+                       activeEntity={activeEntity || null}
+                       surfaceY={targetSurfaceY}
+                       selectedAction={selectedAction}
+                       isAutoSnapped={isAutoSnapped}
+                   />
+                   <CombatForecastOverlay
+                       targetEntity={lockedTarget}
+                       mapData={mapData}
+                   />
+                 </>
              )}
 
              {/* 3D Trajectory Projection Arc */}

@@ -66,7 +66,7 @@ const InstancedDecoration = React.memo(({ type, positions, scaleRange = [0.8, 1.
                     gradientMap={DEFAULT_COZY_GRADIENT_MAP}
                     transparent 
                     opacity={isMoveMode ? 0.15 : 1.0}
-                    alphaTest={isMoveMode ? 0 : 0.5} 
+                    alphaTest={isMoveMode ? 0 : 0.15} 
                     side={THREE.DoubleSide} 
                 />
             </instancedMesh>
@@ -80,7 +80,7 @@ const InstancedDecoration = React.memo(({ type, positions, scaleRange = [0.8, 1.
                     gradientMap={DEFAULT_COZY_GRADIENT_MAP}
                     transparent 
                     opacity={isMoveMode ? 0.15 : 1.0}
-                    alphaTest={isMoveMode ? 0 : 0.5} 
+                    alphaTest={isMoveMode ? 0 : 0.15} 
                     side={THREE.DoubleSide} 
                 />
             </instancedMesh>

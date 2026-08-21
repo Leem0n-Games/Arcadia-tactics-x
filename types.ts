@@ -25,7 +25,8 @@ import {
   DiceRollOverlayData, 
   SpellEffectData, 
   InitiativeRollDetail, 
-  PendingLevelUp 
+  PendingLevelUp,
+  AttackForecast
 } from './types/combat';
 
 import { 
@@ -105,6 +106,7 @@ export interface VisualComponent {
   spriteUrl?: string;
   color: string;
   modelType: 'billboard' | 'voxel';
+  spriteConfig?: any;
 }
 
 // INSTANCE SCHEMA: Runtime Objects

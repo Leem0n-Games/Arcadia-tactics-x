@@ -154,6 +154,7 @@ export const BattleScene: React.FC<any> = React.memo(({ entities, weather, curre
                             position={[ent.position.x, surfaceY, ent.position.y]} 
                             color={ent.visual.color} 
                             spriteUrl={ent.visual.spriteUrl} 
+                            spriteConfig={ent.visual.spriteConfig}
                             isCurrentTurn={isTurn} 
                             isActivePlayer={isActivePlayer}
                             hp={ent.stats.hp} 

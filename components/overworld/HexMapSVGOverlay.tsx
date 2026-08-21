@@ -227,8 +227,10 @@ export const HexMapSVGOverlay: React.FC<HexMapSVGOverlayProps> = ({
         const { x, y } = hexToPixel(playerPos.x, playerPos.y);
         const PLAYER_SCALE = 2.0;
         const isPriest = Boolean(playerSprite && playerSprite.toLowerCase().includes('priest'));
+        const isFighter = Boolean(playerSprite && playerSprite.toLowerCase().includes('fighter'));
+        const isSpritesheet = isPriest || isFighter;
         
-        // Priest Spritesheet: 4 columns (172.5px each) x 4 rows (257.5px each)
+        // Spritesheet: 4 columns (172.5px each) x 4 rows (257.5px each)
         // Row 0: Down (Front), Row 1: Left, Row 2: Right, Row 3: Up (Back)
         const ROW_BY_FACING: Record<number, number> = {
           0: 0, // Down -> Row 0
@@ -254,7 +256,7 @@ export const HexMapSVGOverlay: React.FC<HexMapSVGOverlayProps> = ({
               <circle r={HEX_SIZE * 1.1} fill="#3b82f6" opacity={0.2} />
             )}
             <use href="#hex-shape-ui" stroke="#fbbf24" strokeWidth="2" strokeOpacity="0.6" fill="none" className="animate-pulse" />
-            {isPriest ? (
+            {isSpritesheet ? (
               <g transform={`translate(${-displayWidth / 2}, ${-displayHeight * 0.82})`} className="drop-shadow-2xl" style={{ opacity: isGracePeriod ? 0.7 : 1 }}>
                 <svg 
                   width={displayWidth} 
@@ -263,7 +265,7 @@ export const HexMapSVGOverlay: React.FC<HexMapSVGOverlayProps> = ({
                   style={{ overflow: 'hidden' }}
                 >
                   <image 
-                    href={playerSprite.includes('priest') ? '/assets/players/priest/spritesheetpriest.png' : playerSprite} 
+                    href={isPriest ? '/assets/players/priest/spritesheetpriest.png' : playerSprite} 
                     width={690} 
                     height={1030} 
                     style={{ imageRendering: 'pixelated' }} 

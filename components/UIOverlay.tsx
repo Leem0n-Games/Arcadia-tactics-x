@@ -13,14 +13,11 @@ import { getThemeConfig, THEMES } from '../services/themeSystem';
 import { RestModal } from './RestModal';
 import { DiceRoll3DOverlay } from './battle/DiceRoll3DOverlay';
 import { TurnTimerUI } from './battle/TurnTimerUI';
-import { ActionEconomyTokens } from './battle/ActionEconomyTokens';
 import { CombatDiceLogDrawer } from './battle/CombatDiceLogDrawer';
-import { MobileDPad } from './ui/MobileDPad';
 import { useTurnTransition } from '../hooks/useTurnTransition';
 import { TurnTransitionOverlay } from './battle/TurnTransitionOverlay';
 import { NpcGiftModal } from './NpcGiftModal';
 import { AdventurersGuildModal } from './AdventurersGuildModal';
-import { QuestJournalModal } from './QuestJournalModal';
 import { GameGuideModal } from './GameGuideModal';
 import { getAncientSiteAt, ANCIENT_SITES } from '../data/ancientSites';
 import { BG3RadialMenu } from './BG3RadialMenu';
@@ -35,8 +32,8 @@ export const UIOverlay: React.FC = () => {
   const [showRestModal, setShowRestModal] = useState(false);
   const [showNpcModal, setShowNpcModal] = useState(false);
   const [showGuildModal, setShowGuildModal] = useState(false);
-  const [showQuestModal, setShowQuestModal] = useState(false);
   const [showGameGuideModal, setShowGameGuideModal] = useState(false);
+  const [showQuestModal, setShowQuestModal] = useState(false);
   const [targetIdx, setTargetIdx] = useState(0);
 
   const toggleZenMode = () => {
@@ -57,6 +54,73 @@ export const UIOverlay: React.FC = () => {
   } = useGameStore();
 
   const [now, setNow] = useState(Date.now());
+  const [notificationExpanded, setNotificationExpanded] = useState(false);
+  const [notificationPinned, setNotificationPinned] = useState(false);
+  const [lastNotificationId, setLastNotificationId] = useState<string | number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const recentLog = logs.length > 0 ? logs[logs.length - 1] : null;
+
+  useEffect(() => {
+    if (recentLog) {
+      const logId = recentLog.id || recentLog.timestamp || recentLog.message;
+      if (logId !== lastNotificationId) {
+        setLastNotificationId(logId);
+        setNotificationExpanded(true);
+        setNotificationPinned(false);
+
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+        }
+
+        timerRef.current = setTimeout(() => {
+          setNotificationExpanded(false);
+        }, 2000);
+      }
+    }
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [recentLog, lastNotificationId]);
+
+  const handleNotificationClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setNotificationPinned(true);
+    setNotificationExpanded(true);
+    sfx.playUiHover();
+  };
+
+  const handleCollapseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setNotificationExpanded(false);
+    setNotificationPinned(false);
+    sfx.playUiHover();
+  };
+
+  const handleToggleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (notificationExpanded) {
+      handleCollapseClick(e);
+    } else {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setNotificationPinned(true);
+      setNotificationExpanded(true);
+      sfx.playUiHover();
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 500);
@@ -311,8 +375,6 @@ export const UIOverlay: React.FC = () => {
       return dist <= e.visionRange;
   });
 
-  const recentLog = logs.length > 0 ? logs[logs.length - 1] : null;
-
   if (gameState === GameState.CHARACTER_CREATION) return null;
 
   return (
@@ -331,8 +393,85 @@ export const UIOverlay: React.FC = () => {
         {isMapOpen && <WorldMapScreen />}
         {!isZenMode && !isMapOpen && <OverworldMinimap />}
         <NarrativeEventModal />
-        {showQuestModal && <QuestJournalModal onClose={() => setShowQuestModal(false)} />}
         {showGameGuideModal && <GameGuideModal onClose={() => setShowGameGuideModal(false)} />}
+
+        {/* Floating Side-Tab Notification Hub (Left Edge) */}
+        {!isZenMode && (
+            <div className="fixed left-0 top-[35%] z-50 flex items-start pointer-events-auto select-none">
+                <div 
+                    onClick={handleToggleClick}
+                    className={`flex items-center bg-slate-950/85 backdrop-blur-2xl border-y border-r border-amber-500/30 shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden rounded-r-2xl
+                        ${notificationExpanded 
+                            ? 'translate-x-0 w-72 sm:w-96 px-4 py-3' 
+                            : 'translate-x-0 w-11 px-3 py-4 hover:bg-slate-900/95 border-amber-500/20'
+                        }
+                    `}
+                    style={{ minHeight: '48px' }}
+                    title={notificationExpanded ? "Toca para fijar o colapsar" : "Expandir registro de eventos"}
+                >
+                    {!notificationExpanded ? (
+                        /* Collapsed Tab State */
+                        <div className="flex flex-col items-center justify-center gap-1.5 text-amber-400 w-full">
+                            <span className="text-sm animate-bounce">📜</span>
+                            <span className="text-[7px] tracking-widest font-black uppercase origin-center rotate-90 my-1">LOG</span>
+                            {recentLog && (
+                                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                            )}
+                        </div>
+                    ) : (
+                        /* Expanded Detailed State */
+                        <div 
+                            onClick={handleNotificationClick}
+                            className="flex items-start gap-2.5 w-full text-left animate-in fade-in slide-in-from-left-2 duration-200"
+                        >
+                            {/* Event Category Icon */}
+                            <div className="shrink-0 text-base mt-0.5">
+                                {recentLog?.type === 'combat' ? '⚔️' : recentLog?.type === 'loot' ? '🎁' : recentLog?.type === 'levelup' ? '⭐' : '📜'}
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md leading-none border
+                                        ${recentLog?.type === 'combat' ? 'bg-red-500/10 border-red-500/30 text-red-400' 
+                                        : recentLog?.type === 'loot' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' 
+                                        : recentLog?.type === 'levelup' ? 'bg-amber-400 text-slate-950 border-amber-300 font-extrabold' 
+                                        : 'bg-white/5 border-white/10 text-slate-300'}
+                                    `}>
+                                        {recentLog?.type || 'EVENTO'}
+                                    </span>
+                                    
+                                    <div className="flex items-center gap-1">
+                                        {notificationPinned ? (
+                                            <span className="text-[8px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-1 py-0.5 rounded flex items-center gap-0.5 animate-pulse">
+                                                📌 FIJADO
+                                            </span>
+                                        ) : (
+                                            <span className="text-[7px] text-slate-500 font-bold italic animate-pulse">
+                                                Se cierra en 2s...
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                {/* The Message */}
+                                <p className="text-[11px] font-bold leading-relaxed font-mono text-slate-100 pr-1 select-text break-words">
+                                    {recentLog?.message || "No hay eventos recientes."}
+                                </p>
+                            </div>
+
+                            {/* Retract/Close Button */}
+                            <button 
+                                onClick={handleCollapseClick}
+                                className="shrink-0 w-6 h-6 rounded-lg bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white flex items-center justify-center border border-white/5 transition-all text-[10px] active:scale-90"
+                                title="Colapsar"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
 
         {/* Global Floating HUD: 100% Transparent Pass-through container */}
         <div className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between p-2 sm:p-4 overflow-hidden">
@@ -375,53 +514,90 @@ export const UIOverlay: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="flex gap-1 sm:gap-1.5 items-center shrink-0">
-                        {!isZenMode && (
-                            <>
-                                {gameState !== GameState.BATTLE_TACTICAL && (
-                                    <>
-                                        <CircleBtn onClick={() => startHuntMode()} icon="⛏️" themeClass={themeConfig.classes.circleButton} title="Modo Cacería (Minecraft 3D)" />
-                                        <CircleBtn onClick={() => setShowRestModal(true)} icon="⛺" themeClass={themeConfig.classes.circleButton} title="Descanso y Posada (Short/Long Rest)" />
-                                    </>
-                                )}
-                                <CircleBtn onClick={() => setShowCombatDiceLog(true)} icon="🎲" themeClass={themeConfig.classes.circleButton} title="Historial de Dados (D&D 5E)" />
-                            </>
-                        )}
-
-                        {gameState !== GameState.BATTLE_TACTICAL && (
-                            <CircleBtn onClick={toggleMap} icon="📜" themeClass={themeConfig.classes.circleButton} title="Mapa del Mundo (M)" />
-                        )}
+                    <div className="flex gap-1.5 items-center shrink-0">
                         <CircleBtn onClick={toggleInventory} icon="🎒" themeClass={themeConfig.classes.circleButton} title="Inventario (I)" />
                         
                         <div className="relative">
-                            <CircleBtn onClick={() => setShowSystemMenu(!showSystemMenu)} icon="⚙️" themeClass={themeConfig.classes.circleButton} title="Ajustes y Opciones" />
+                            <CircleBtn onClick={() => setShowSystemMenu(!showSystemMenu)} icon="⚙️" themeClass={themeConfig.classes.circleButton} title="Opciones y Acciones de Campaña" />
                             {showSystemMenu && (
-                                <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 border bg-slate-950/85 backdrop-blur-2xl border-white/15">
-                                    <div className="px-3 py-1.5 text-[9px] uppercase font-bold tracking-widest border-b border-white/10 bg-white/5 text-amber-400">
-                                        Tema: {themeConfig.name}
+                                <div className="absolute top-full right-0 mt-2.5 w-60 sm:w-64 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 border bg-slate-950/90 backdrop-blur-3xl border-amber-500/25 animate-in fade-in slide-in-from-top-2 duration-150">
+                                    {/* Section 1: Campamiento y Cacería (Only available out of tactical combat) */}
+                                    {!isZenMode && gameState !== GameState.BATTLE_TACTICAL && (
+                                        <>
+                                            <div className="px-3.5 py-1.5 text-[8px] sm:text-[9px] uppercase font-black tracking-widest border-b border-white/10 bg-white/5 text-amber-400">
+                                                Campamento y Aventura
+                                            </div>
+                                            <button 
+                                                onClick={() => { startHuntMode(); setShowSystemMenu(false); }} 
+                                                className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center gap-2.5"
+                                            >
+                                                <span className="text-sm">⛏️</span> <span>Modo Cacería (3D)</span>
+                                            </button>
+                                            <button 
+                                                onClick={() => { setShowRestModal(true); setShowSystemMenu(false); }} 
+                                                className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center gap-2.5"
+                                            >
+                                                <span className="text-sm">⛺</span> <span>Descanso y Posada</span>
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {/* Section 2: Registros e Información */}
+                                    <div className="px-3.5 py-1.5 text-[8px] sm:text-[9px] uppercase font-black tracking-widest border-y border-white/10 bg-white/5 text-slate-400">
+                                        Registros e Información
                                     </div>
                                     <button 
-                                        onClick={() => { setShowQuestModal(true); setShowSystemMenu(false); }} 
-                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-white/10 flex items-center gap-2"
+                                        onClick={() => { toggleMap(); setShowSystemMenu(false); }} 
+                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center gap-2.5"
                                     >
-                                        <span>📖</span> <span>Misiones</span>
+                                        <span className="text-sm">🗺️</span> <span>Bitácora y Atlas</span>
                                     </button>
+                                    {!isZenMode && (
+                                        <button 
+                                            onClick={() => { setShowCombatDiceLog(true); setShowSystemMenu(false); }} 
+                                            className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center gap-2.5"
+                                        >
+                                            <span className="text-sm">🎲</span> <span>Historial de Dados 5E</span>
+                                        </button>
+                                    )}
                                     <button 
                                         onClick={() => { setShowGameGuideModal(true); setShowSystemMenu(false); }} 
-                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-white/10 flex items-center gap-2 text-amber-300"
+                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center gap-2.5"
                                     >
-                                        <span>🧭</span> <span>Guía 5E</span>
+                                        <span className="text-sm">🧭</span> <span>Guía de Referencia 5E</span>
                                     </button>
+
+                                    {/* Section 3: Opciones del Sistema */}
+                                    <div className="px-3.5 py-1.5 text-[8px] sm:text-[9px] uppercase font-black tracking-widest border-y border-white/10 bg-white/5 text-slate-400">
+                                        Sistema de Juego
+                                    </div>
                                     <button 
                                         onClick={() => { toggleSettings(); setShowSystemMenu(false); }} 
-                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-white/10 flex items-center justify-between"
+                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-amber-500/10 hover:text-amber-300 transition-colors flex items-center justify-between"
                                     >
-                                        <span>🎨 Tema Visual</span>
-                                        <span className="text-sm">{themeConfig.icon}</span>
+                                        <div className="flex items-center gap-2.5">
+                                            <span className="text-sm">🎨</span> <span>Tema Visual</span>
+                                        </div>
+                                        <span className="text-xs bg-slate-800 border border-white/10 px-1.5 py-0.5 rounded text-amber-400 font-serif leading-none">{themeConfig.icon}</span>
                                     </button>
-                                    <button onClick={() => { saveGame(); setShowSystemMenu(false); }} className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-white/10">💾 Guardar</button>
-                                    <button onClick={() => { loadGame(); setShowSystemMenu(false); }} className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-white/10">📂 Cargar</button>
-                                    <button onClick={() => { quitToMenu(); setShowSystemMenu(false); }} className="px-3.5 py-2 text-left text-xs font-bold text-red-400 hover:bg-red-950/40">🚪 Menú Principal</button>
+                                    <button 
+                                        onClick={() => { saveGame(); setShowSystemMenu(false); }} 
+                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-white/10 transition-colors"
+                                    >
+                                        💾 Guardar Partida
+                                    </button>
+                                    <button 
+                                        onClick={() => { loadGame(); setShowSystemMenu(false); }} 
+                                        className="px-3.5 py-2 text-left text-xs font-bold border-b border-white/5 hover:bg-white/10 transition-colors"
+                                    >
+                                        📂 Cargar Partida
+                                    </button>
+                                    <button 
+                                        onClick={() => { quitToMenu(); setShowSystemMenu(false); }} 
+                                        className="px-3.5 py-2 text-left text-xs font-black text-red-400 hover:bg-red-950/40 transition-colors"
+                                    >
+                                        🚪 Menú Principal
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -431,14 +607,6 @@ export const UIOverlay: React.FC = () => {
 
             {/* Floating Notifications / POI Interaction Pills in Safe Middle Area */}
             <div className="absolute top-18 sm:top-20 left-0 right-0 flex flex-col items-center pointer-events-none space-y-2 px-3 z-10">
-                {recentLog?.message && (
-                    <div key={recentLog.id || recentLog.timestamp || recentLog.message} className={`animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-300 px-3 py-1.5 rounded-full backdrop-blur-2xl shadow-xl border text-[11px] font-bold font-mono text-center max-w-sm
-                        ${recentLog.type === 'combat' ? 'bg-red-950/60 border-red-500/40 text-red-100' : recentLog.type === 'loot' ? 'bg-amber-950/60 border-amber-500/40 text-amber-100' : recentLog.type === 'levelup' ? 'bg-amber-500/80 border-amber-300 text-slate-950' : 'bg-slate-900/60 border-white/15 text-white'}
-                    `}>
-                        {recentLog.message}
-                    </div>
-                )}
-                
                 {/* Floating Interactive Points of Interest Pills (Overworld) */}
                 <div className="pointer-events-auto flex flex-col items-center gap-1.5">
                     {gameState === GameState.OVERWORLD && standingOnAncientSite && (
@@ -582,15 +750,14 @@ export const UIOverlay: React.FC = () => {
                                 </div>
                                 {isPlayerTurn && (
                                     <div className="flex flex-col items-center gap-1 shrink-0 ml-1">
-                                        <ActionEconomyTokens hasActed={hasActed} hasMoved={hasMoved} activeEntity={activeEntity} />
                                         <TurnTimerUI durationSeconds={30} />
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Overworld Party Mini Strip */}
-                        {!isPlayerTurn && party.length > 0 && (
+                        {/* Overworld Party Mini Strip (Shown outside of combat) */}
+                        {gameState !== GameState.BATTLE_TACTICAL && party.length > 0 && (
                             <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                                 {party.map(p => (
                                     <div key={p.id} className="flex items-center gap-1.5 p-1 pr-2.5 rounded-xl bg-slate-950/50 backdrop-blur-xl border border-white/10 shadow shrink-0">
@@ -687,10 +854,6 @@ export const UIOverlay: React.FC = () => {
 
         {activeDiceRoll && (
             <DiceRoll3DOverlay rollData={activeDiceRoll} onClose={clearDiceRoll} />
-        )}
-
-        {(gameState === GameState.OVERWORLD || gameState === GameState.TOWN_EXPLORATION) && !isInventoryOpen && !isMapOpen && (
-            <MobileDPad onMove={movePlayerOverworld} playerPos={playerPos} />
         )}
 
         {gameState === GameState.BATTLE_TACTICAL && activeEntityId && (
