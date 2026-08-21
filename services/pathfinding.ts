@@ -33,8 +33,76 @@ const getCell = (q: number, r: number, map?: HexCell[], generator?: (q: number, 
 };
 
 /**
+ * Min-Heap Priority Queue for O(log N) push/pop operations in A* pathfinding.
+ * Replaces O(N log N) sorting per search iteration and O(N) searching.
+ */
+class MinHeap<T> {
+  private heap: { item: T; priority: number }[] = [];
+
+  get size(): number {
+    return this.heap.length;
+  }
+
+  push(item: T, priority: number): void {
+    this.heap.push({ item, priority });
+    this.bubbleUp(this.heap.length - 1);
+  }
+
+  pop(): T | undefined {
+    if (this.heap.length === 0) return undefined;
+    const top = this.heap[0].item;
+    const bottom = this.heap.pop()!;
+    if (this.heap.length > 0) {
+      this.heap[0] = bottom;
+      this.sinkDown(0);
+    }
+    return top;
+  }
+
+  private bubbleUp(index: number): void {
+    while (index > 0) {
+      const parentIndex = (index - 1) >> 1;
+      if (this.heap[index].priority >= this.heap[parentIndex].priority) break;
+      const temp = this.heap[index];
+      this.heap[index] = this.heap[parentIndex];
+      this.heap[parentIndex] = temp;
+      index = parentIndex;
+    }
+  }
+
+  private sinkDown(index: number): void {
+    const length = this.heap.length;
+    while (true) {
+      let smallest = index;
+      const left = (index << 1) + 1;
+      const right = (index << 1) + 2;
+
+      if (left < length && this.heap[left].priority < this.heap[smallest].priority) {
+        smallest = left;
+      }
+      if (right < length && this.heap[right].priority < this.heap[smallest].priority) {
+        smallest = right;
+      }
+      if (smallest === index) break;
+
+      const temp = this.heap[index];
+      this.heap[index] = this.heap[smallest];
+      this.heap[smallest] = temp;
+      index = smallest;
+    }
+  }
+}
+
+interface PathNode<T> {
+    cell: T;
+    g: number;
+    f: number;
+    parent?: PathNode<T>;
+}
+
+/**
  * A* Pathfinding for Hexagonal Grid (Overworld)
- * Now supports Generator Function for Infinite Maps
+ * Uses MinHeap and Map lookups for optimal O(N log N) performance.
  */
 export const findPath = (
     start: {q:number, r:number}, 
@@ -52,25 +120,30 @@ export const findPath = (
     if (!startCell || !endCell) return null;
     if ((TERRAIN_MOVEMENT_COST[endCell.terrain] || 1) >= 99) return null;
 
-    const openSet: { cell: HexCell, f: number, g: number, parent?: any }[] = [];
+    // Fast lookup for g-scores to avoid O(N) array searching
+    const openSetG = new Map<string, number>();
     const closedSet = new Set<string>();
+    const openSet = new MinHeap<PathNode<HexCell>>();
 
-    openSet.push({ cell: startCell, f: 0, g: 0 });
+    const startNode: PathNode<HexCell> = { cell: startCell, f: 0, g: 0 };
+    openSet.push(startNode, 0);
+    openSetG.set(`${startCell.q},${startCell.r}`, 0);
 
     let iterations = 0;
 
-    while (openSet.length > 0) {
+    while (openSet.size > 0) {
         iterations++;
         if (iterations > MAX_DEPTH * 10) return null; // Safety break
 
-        openSet.sort((a, b) => a.f - b.f);
-        const current = openSet.shift()!;
+        const current = openSet.pop()!;
         const currentKey = `${current.cell.q},${current.cell.r}`;
+
+        if (closedSet.has(currentKey)) continue;
 
         if (current.cell.q === end.q && current.cell.r === end.r) {
             const path: HexCell[] = [];
-            let curr = current;
-            while (curr.parent) {
+            let curr: PathNode<HexCell> | undefined = current;
+            while (curr && curr.parent) {
                 path.push(curr.cell);
                 curr = curr.parent;
             }
@@ -96,19 +169,19 @@ export const findPath = (
             if (cost >= 99) continue;
 
             const tentativeG = current.g + cost;
-            const existingNode = openSet.find(n => n.cell.q === nQ && n.cell.r === nR);
-            if (existingNode && tentativeG >= existingNode.g) continue;
+            const existingG = openSetG.get(nKey);
+            if (existingG !== undefined && tentativeG >= existingG) continue;
 
             const heuristic = distHex({q: nQ, r: nR}, end);
-            const newNode = { cell: neighbor, g: tentativeG, f: tentativeG + heuristic, parent: current };
+            const newNode: PathNode<HexCell> = {
+                cell: neighbor,
+                g: tentativeG,
+                f: tentativeG + heuristic,
+                parent: current
+            };
 
-            if (existingNode) {
-                existingNode.g = tentativeG;
-                existingNode.f = tentativeG + heuristic;
-                existingNode.parent = current;
-            } else {
-                openSet.push(newNode);
-            }
+            openSetG.set(nKey, tentativeG);
+            openSet.push(newNode, newNode.f);
         }
     }
     return null;
@@ -116,6 +189,7 @@ export const findPath = (
 
 /**
  * A* Pathfinding for Square Grid (Battle)
+ * Uses MinHeap and Map lookups for optimal O(N log N) performance.
  */
 export const findBattlePath = (
     start: {x:number, y:number}, 
@@ -135,23 +209,28 @@ export const findBattlePath = (
     const targetCell = mapIndex.get(`${end.x},${end.y}`);
     if (targetCell?.isObstacle) return null;
 
-    const openSet: { cell: BattleCell, f: number, g: number, parent?: any }[] = [];
-    const closedSet = new Set<string>();
-
     const startCell = mapIndex.get(`${start.x},${start.y}`);
     if (!startCell) return null;
 
-    openSet.push({ cell: startCell, f: 0, g: 0 });
+    // Fast lookup for g-scores to avoid O(N) linear array searches
+    const openSetG = new Map<string, number>();
+    const closedSet = new Set<string>();
+    const openSet = new MinHeap<PathNode<BattleCell>>();
 
-    while (openSet.length > 0) {
-        openSet.sort((a, b) => a.f - b.f);
-        const current = openSet.shift()!;
+    const startNode: PathNode<BattleCell> = { cell: startCell, f: 0, g: 0 };
+    openSet.push(startNode, 0);
+    openSetG.set(`${startCell.x},${startCell.z}`, 0);
+
+    while (openSet.size > 0) {
+        const current = openSet.pop()!;
         const currentKey = `${current.cell.x},${current.cell.z}`;
+
+        if (closedSet.has(currentKey)) continue;
 
         if (current.cell.x === end.x && current.cell.z === end.y) {
             const path: BattleCell[] = [];
-            let curr = current;
-            while (curr.parent) {
+            let curr: PathNode<BattleCell> | undefined = current;
+            while (curr && curr.parent) {
                 path.push(curr.cell);
                 curr = curr.parent;
             }
@@ -196,20 +275,19 @@ export const findBattlePath = (
             const cost = baseCost * hazardMultiplier;
             
             const tentativeG = current.g + cost;
-            
-            const existingNode = openSet.find(n => n.cell.x === nX && n.cell.z === nY);
-            if (existingNode && tentativeG >= existingNode.g) continue;
+            const existingG = openSetG.get(nKey);
+            if (existingG !== undefined && tentativeG >= existingG) continue;
 
             const heuristic = distGrid({x: nX, y: nY}, end);
-            const newNode = { cell: neighbor, g: tentativeG, f: tentativeG + heuristic, parent: current };
+            const newNode: PathNode<BattleCell> = {
+                cell: neighbor,
+                g: tentativeG,
+                f: tentativeG + heuristic,
+                parent: current
+            };
 
-            if (existingNode) {
-                existingNode.g = tentativeG;
-                existingNode.f = tentativeG + heuristic;
-                existingNode.parent = current;
-            } else {
-                openSet.push(newNode);
-            }
+            openSetG.set(nKey, tentativeG);
+            openSet.push(newNode, newNode.f);
         }
     }
     return null;
