@@ -65,6 +65,7 @@ export interface BattleSlice {
   getAttackPrediction: (targetEntityOverride?: Entity | null) => any | null;
   destroyObstacle: (x: number, z: number) => void;
   removeDamagePopup: (id: string) => void;
+  confirmMovement: () => void;
 }
 
 export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (set, get) => ({
@@ -411,38 +412,17 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
           }
           const cell = state.battleMap.find(c => c.x === x && c.z === z);
           if (cell?.isObstacle) return;
-          sfx.playTacticalMove(cell?.terrain, dist > 3);
 
-          // Check environmental hazard on destination tile
-          const hazardOnTile = (state.battleHazards || []).find(h => h.x === x && h.z === z);
-          let finalPopups = [...state.damagePopups];
-          let updatedEntities = state.battleEntities.map(e => e.id === activeId ? { ...e, position: { x, y: z } } : e);
-
-          if (hazardOnTile) {
-              const hazardRes = resolveHazardEntry(activeEntity, hazardOnTile);
-              if (hazardRes.message) state.addLog(hazardRes.message, hazardRes.damage > 0 ? "combat" : "info");
-              
-              if (hazardRes.damage > 0) {
-                  const dmgRes = applyDamage({ ...state, battleEntities: updatedEntities, damagePopups: [] }, activeEntity.id, hazardRes.damage);
-                  if (dmgRes) {
-                      updatedEntities = dmgRes.battleEntities;
-                      if (dmgRes.damagePopups) finalPopups = [...finalPopups, ...dmgRes.damagePopups];
-                  }
-              } else if (hazardRes.healing > 0) {
-                  updatedEntities = updatedEntities.map(e => e.id === activeId ? { ...e, stats: { ...e.stats, hp: Math.min(e.stats.maxHp, e.stats.hp + hazardRes.healing) } } : e);
-                  finalPopups.push({ id: generateId(), position: [x, 0, z] as [number, number, number], amount: `+${hazardRes.healing} HP`, color: '#22c55e', isCrit: false, timestamp: Date.now() });
-              } else if (hazardRes.popupAmount) {
-                  finalPopups.push({ id: generateId(), position: [x, 0, z] as [number, number, number], amount: hazardRes.popupAmount, color: hazardRes.popupColor, isCrit: false, timestamp: Date.now() });
-              }
+          // 2-Step Confirmation: First click selects tile as preview (Ghost Path), second click on same tile confirms movement
+          if (!state.selectedTile || state.selectedTile.x !== x || state.selectedTile.z !== z) {
+              sfx.playUiHover();
+              set({ selectedTile: { x, z } });
+              state.addLog(`👣 Vista previa de ruta a ({x: ${x}, z: ${z}}). Costo: ${dist} PM. Presiona 'Mover aquí' para confirmar.`, 'info');
+              return;
           }
 
-          set({ 
-              battleEntities: updatedEntities, 
-              hasMoved: true, 
-              selectedAction: null, 
-              selectedTile: null,
-              damagePopups: finalPopups
-          });
+          // Confirm movement
+          get().confirmMovement();
       } 
       else if (state.selectedAction === BattleAction.ATTACK || state.selectedAction === BattleAction.MAGIC) {
           if (state.hasActed) return;
@@ -1062,6 +1042,53 @@ export const createBattleSlice: StateCreator<GameStore, [], [], BattleSlice> = (
   },
   attemptRun: () => { const state = get(); const activeId = state.turnOrder[state.currentTurnIndex]; const activeEntity = state.battleEntities.find(e => e.id === activeId); if (activeEntity && activeEntity.stats.stamina < STAT_COSTS.RUN) { state.addLog("Too exhausted!", "combat"); return; } if (activeEntity) { const newStamina = activeEntity.stats.stamina - STAT_COSTS.RUN; set(s => ({ battleEntities: s.battleEntities.map(e => e.id === activeId ? { ...e, stats: { ...e.stats, stamina: newStamina } } : e) })); } const hpFactor = (activeEntity?.stats.hp || 1) / (activeEntity?.stats.maxHp || 1); const escapeChance = Math.min(0.95, Math.max(0.2, 0.5 + (hpFactor * 0.2))); if (Math.random() < escapeChance) { get().addLog("Escaped!", "narrative"); set({ gameState: GameState.OVERWORLD, damagePopups: [], gracePeriodEndTime: Date.now() + 5000 }); } else { get().addLog("Failed escape!", "combat"); get().nextTurn(); } },
   restartBattle: () => { sfx.playUiClick(); get().startBattle(get().battleTerrain, get().battleWeather); },
+  confirmMovement: () => {
+      const state = get();
+      const activeId = state.turnOrder[state.currentTurnIndex];
+      const activeEntity = state.battleEntities.find(e => e.id === activeId);
+      const selTile = state.selectedTile;
+      if (!activeEntity || activeEntity.type !== 'PLAYER' || !selTile) return;
+
+      const x = selTile.x;
+      const z = selTile.z;
+      const speedInTiles = Math.floor((activeEntity.stats.speed || 30) / 5);
+      const dist = Math.max(Math.abs(activeEntity.position.x - x), Math.abs(activeEntity.position.y - z));
+      const cell = state.battleMap.find(c => c.x === x && c.z === z);
+      if (cell?.isObstacle || dist > speedInTiles || dist === 0) return;
+
+      sfx.playTacticalMove(cell?.terrain, dist > 3);
+
+      const hazardOnTile = (state.battleHazards || []).find(h => h.x === x && h.z === z);
+      let finalPopups = [...state.damagePopups];
+      let updatedEntities = state.battleEntities.map(e => e.id === activeId ? { ...e, position: { x, y: z } } : e);
+
+      if (hazardOnTile) {
+          const hazardRes = resolveHazardEntry(activeEntity, hazardOnTile);
+          if (hazardRes.message) state.addLog(hazardRes.message, hazardRes.damage > 0 ? "combat" : "info");
+          
+          if (hazardRes.damage > 0) {
+              const dmgRes = applyDamage({ ...state, battleEntities: updatedEntities, damagePopups: [] }, activeEntity.id, hazardRes.damage);
+              if (dmgRes) {
+                  updatedEntities = dmgRes.battleEntities;
+                  if (dmgRes.damagePopups) finalPopups = [...finalPopups, ...dmgRes.damagePopups];
+              }
+          } else if (hazardRes.healing > 0) {
+              updatedEntities = updatedEntities.map(e => e.id === activeId ? { ...e, stats: { ...e.stats, hp: Math.min(e.stats.maxHp, e.stats.hp + hazardRes.healing) } } : e);
+              finalPopups.push({ id: generateId(), position: [x, 0, z] as [number, number, number], amount: `+${hazardRes.healing} HP`, color: '#22c55e', isCrit: false, timestamp: Date.now() });
+          } else if (hazardRes.popupAmount) {
+              finalPopups.push({ id: generateId(), position: [x, 0, z] as [number, number, number], amount: hazardRes.popupAmount, color: hazardRes.popupColor, isCrit: false, timestamp: Date.now() });
+          }
+      }
+
+      set({ 
+          battleEntities: updatedEntities, 
+          hasMoved: true, 
+          selectedAction: null, 
+          selectedTile: null,
+          damagePopups: finalPopups
+      });
+      state.addLog(`👟 ${activeEntity.name} se desplazó a ({x: ${x}, z: ${z}}).`, 'info');
+  },
   continueAfterVictory: () => { 
     sfx.playUiClick(); 
     const { battleRewards, inventory, battleTerrain, progressQuestObjective } = get(); 

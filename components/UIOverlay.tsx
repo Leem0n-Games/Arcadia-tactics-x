@@ -47,7 +47,7 @@ export const UIOverlay: React.FC = () => {
       logs, gameState, party, turnOrder, currentTurnIndex, initiativeRolls, battleRound,
       isInventoryOpen, isMapOpen, toggleInventory, toggleMap, playerPos, dimension, movePlayerOverworld,
       standingOnPortal, standingOnSettlement, usePortal, enterSettlement, saveGame, loadGame, quitToMenu, 
-      battleEntities, activeOverworldEnemies, selectAction, selectSpell, selectedAction, selectedSpell, hasMoved, hasActed,
+      battleEntities, activeOverworldEnemies, selectAction, selectSpell, selectedAction, selectedSpell, selectedTile, hasMoved, hasActed,
       lootDrops, collectLoot, uiTheme, setUITheme, toggleSettings, activeDiceRoll, clearDiceRoll, startHuntMode,
       handleTileInteraction, cameraAzimuthOffset, cameraZoomFactor, setCameraGestureState, gracePeriodEndTime,
       quests, startBattle, startDragonDungeonBattle, searchedSites, investigateAncientSite
@@ -394,6 +394,30 @@ export const UIOverlay: React.FC = () => {
         {!isZenMode && !isMapOpen && <OverworldMinimap />}
         <NarrativeEventModal />
         {showGameGuideModal && <GameGuideModal onClose={() => setShowGameGuideModal(false)} />}
+
+        {/* Tactical Ghost Path Movement Confirmation Banner */}
+        {gameState === GameState.BATTLE_TACTICAL && selectedAction === BattleAction.MOVE && selectedTile && activeEntity && (
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-950/90 backdrop-blur-2xl border border-amber-500/40 px-4 py-2.5 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-auto">
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-400">Ruta Seleccionada</span>
+                    <span className="text-xs text-slate-200 font-bold">Destino: ({selectedTile.x}, {selectedTile.z})</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => useGameStore.getState().confirmMovement()}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-3.5 py-2 rounded-xl shadow-lg transition-all flex items-center gap-1 active:scale-95"
+                    >
+                        <span>✓ Mover aquí</span>
+                    </button>
+                    <button 
+                        onClick={() => useGameStore.setState({ selectedTile: null })}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3 py-2 rounded-xl transition-all active:scale-95"
+                    >
+                        ✕
+                    </button>
+                </div>
+            </div>
+        )}
 
         {/* Floating Side-Tab Notification Hub (Left Edge) */}
         {!isZenMode && (
